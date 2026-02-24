@@ -12,9 +12,13 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// CORS configuration
+// CORS configuration - Updated with your frontend URL
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: [
+        'http://localhost:3000',
+        'http://localhost:3001',
+ 'https://dass-assignment-ttny.vercel.app'
+    ],
     credentials: true
 }));
 
@@ -25,7 +29,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-t
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: ['http://localhost:3000', 'http://localhost:3001'],
+        origin: [
+            'http://localhost:3000',
+            'http://localhost:3001',
+ 'https://dass-assignment-ttny.vercel.app'
+        ],
         credentials: true
     }
 });
@@ -46,10 +54,8 @@ const verifyToken = async (req, res, next) => {
 
         const token = authHeader.split(' ')[1];
         
-        // Verify token
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Get user from database
         const User = mongoose.model('User');
         const user = await User.findById(decoded.userId).select('-password');
         
@@ -182,7 +188,6 @@ const eventSchema = new mongoose.Schema({
     completedAt: Date
 }, { timestamps: true });
 
-// Virtual for checking if registration is open
 eventSchema.virtual('isRegistrationOpen').get(function() {
     if (this.status !== 'published' && this.status !== 'ongoing') return false;
     if (this.registrationDeadline && new Date() > this.registrationDeadline) return false;
@@ -190,7 +195,6 @@ eventSchema.virtual('isRegistrationOpen').get(function() {
     return true;
 });
 
-// Method to check if user can register
 eventSchema.methods.canRegister = function(userType) {
     if (!this.isRegistrationOpen) return false;
     if (this.eligibility === 'iiit-only' && userType !== 'iiit') return false;
@@ -236,7 +240,6 @@ const registrationSchema = new mongoose.Schema({
     completedAt: Date
 }, { timestamps: true });
 
-// Generate unique ticket ID
 registrationSchema.pre('save', async function(next) {
     if (!this.ticketId) {
         const timestamp = Date.now().toString(36);
@@ -248,7 +251,7 @@ registrationSchema.pre('save', async function(next) {
 
 const Registration = mongoose.model('Registration', registrationSchema);
 
-// ===== FORUM MESSAGE SCHEMA (Tier B) =====
+// Forum Message Schema
 const forumMessageSchema = new mongoose.Schema({
     eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -269,7 +272,7 @@ const forumMessageSchema = new mongoose.Schema({
 
 const ForumMessage = mongoose.model('ForumMessage', forumMessageSchema);
 
-// ===== ORGANIZER PASSWORD RESET SCHEMA =====
+// Organizer Password Reset Schema
 const organizerPasswordResetSchema = new mongoose.Schema({
     organizerId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -306,11 +309,9 @@ app.get('/', (req, res) => {
 // ========== CREATE ADMIN AND SAMPLE DATA ==========
 const createAdminAndSampleData = async () => {
     try {
-        // Check if admin exists
         const adminExists = await User.findOne({ email: 'admin@iiit.ac.in' });
         
         if (!adminExists) {
-            // Create admin
             const hashedPassword = await bcrypt.hash('Admin@123456', 10);
             const admin = new User({
                 firstName: 'Admin',
@@ -325,10 +326,9 @@ const createAdminAndSampleData = async () => {
                 onboardingCompleted: true
             });
             await admin.save();
-            console.log('✅ Admin created');
+            console.log('Admin created');
         }
 
-        // Create sample organizers if they don't exist
         const organizers = [
             {
                 firstName: 'Music',
@@ -378,11 +378,10 @@ const createAdminAndSampleData = async () => {
             const exists = await User.findOne({ email: org.email });
             if (!exists) {
                 await User.create(org);
-                console.log(`✅ Created organizer: ${org.organizerDetails.organizerName}`);
+                console.log(`Created organizer: ${org.organizerDetails.organizerName}`);
             }
         }
 
-        // Create sample events
         const codingClub = await User.findOne({ email: 'coding.club@iiit.ac.in' });
         const musicClub = await User.findOne({ email: 'music.club@iiit.ac.in' });
         const sportsCouncil = await User.findOne({ email: 'sports.council@iiit.ac.in' });
@@ -448,7 +447,7 @@ const createAdminAndSampleData = async () => {
 
                 for (let event of events) {
                     await Event.create(event);
-                    console.log(`✅ Created event: ${event.eventName}`);
+                    console.log(`Created event: ${event.eventName}`);
                 }
             }
         }
@@ -607,12 +606,11 @@ app.get('/api/events/:id', verifyToken, async (req, res) => {
     }
 });
 
-// ===== UPDATED: Create event with enhanced validation for Task 8 =====
+// Create event with enhanced validation
 app.post('/api/events', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const eventData = { ...req.body, organizerId: req.user._id };
 
-        // Enhanced validation for merchandise events
         if (eventData.eventType === 'merchandise') {
             if (!eventData.itemDetails) {
                 return res.status(400).json({ 
@@ -628,7 +626,6 @@ app.post('/api/events', verifyToken, restrictTo('organizer', 'admin'), async (re
                 });
             }
             
-            // Validate each variant has required fields
             for (const variant of eventData.itemDetails.variants) {
                 if (!variant.size || !variant.color || variant.stock === undefined || variant.price === undefined) {
                     return res.status(400).json({ 
@@ -650,13 +647,11 @@ app.post('/api/events', verifyToken, restrictTo('organizer', 'admin'), async (re
                 }
             }
             
-            // Set default purchase limit if not provided
             if (!eventData.itemDetails.purchaseLimitPerUser) {
                 eventData.itemDetails.purchaseLimitPerUser = 1;
             }
         }
 
-        // Validate dates
         const now = new Date();
         const startDate = new Date(eventData.eventStartDate);
         const endDate = new Date(eventData.eventEndDate);
@@ -690,7 +685,7 @@ app.post('/api/events', verifyToken, restrictTo('organizer', 'admin'), async (re
     }
 });
 
-// Update event (organizer and admin)
+// Update event
 app.put('/api/events/:id', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const event = await Event.findById(req.params.id);
@@ -699,7 +694,6 @@ app.put('/api/events/:id', verifyToken, restrictTo('organizer', 'admin'), async 
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        // Check ownership - Admin can update any event
         if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
@@ -720,7 +714,7 @@ app.put('/api/events/:id', verifyToken, restrictTo('organizer', 'admin'), async 
     }
 });
 
-// Publish event (organizer and admin)
+// Publish event
 app.patch('/api/events/:id/publish', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const event = await Event.findById(req.params.id);
@@ -729,7 +723,6 @@ app.patch('/api/events/:id/publish', verifyToken, restrictTo('organizer', 'admin
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        // Check ownership - Admin can publish any event
         if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
@@ -748,7 +741,7 @@ app.patch('/api/events/:id/publish', verifyToken, restrictTo('organizer', 'admin
     }
 });
 
-// Delete event (organizer and admin)
+// Delete event
 app.delete('/api/events/:id', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const event = await Event.findById(req.params.id);
@@ -757,7 +750,6 @@ app.delete('/api/events/:id', verifyToken, restrictTo('organizer', 'admin'), asy
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        // Check ownership - Admin can delete any event
         if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
@@ -791,7 +783,7 @@ app.get('/api/events/type/:type', verifyToken, async (req, res) => {
     }
 });
 
-// ===== NEW ROUTE 1: Get event with full details including stock for Task 8 =====
+// Get event with full details including stock
 app.get('/api/events/:id/details', verifyToken, async (req, res) => {
     try {
         const event = await Event.findById(req.params.id)
@@ -801,17 +793,11 @@ app.get('/api/events/:id/details', verifyToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        // Add computed fields
         const eventObj = event.toObject();
         
         if (event.eventType === 'merchandise') {
-            // Calculate total stock
             eventObj.totalStock = event.itemDetails.variants.reduce((sum, v) => sum + v.stock, 0);
-            
-            // Check if any variant is in stock
             eventObj.inStock = event.itemDetails.variants.some(v => v.stock > 0);
-            
-            // Get available variants
             eventObj.availableVariants = event.itemDetails.variants.filter(v => v.stock > 0);
         }
 
@@ -821,7 +807,7 @@ app.get('/api/events/:id/details', verifyToken, async (req, res) => {
     }
 });
 
-// ===== NEW ROUTE 2: Check stock for merchandise event for Task 8 =====
+// Check stock for merchandise event
 app.get('/api/events/:eventId/stock', verifyToken, async (req, res) => {
     try {
         const event = await Event.findById(req.params.eventId);
@@ -935,7 +921,7 @@ app.get('/api/user/registrations', verifyToken, async (req, res) => {
     }
 });
 
-// Get event registrations (organizer and admin)
+// Get event registrations
 app.get('/api/events/:eventId/registrations', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const { eventId } = req.params;
@@ -945,7 +931,6 @@ app.get('/api/events/:eventId/registrations', verifyToken, restrictTo('organizer
             return res.status(404).json({ success: false, message: 'Event not found' });
         }
 
-        // Check ownership - Admin can view any registrations
         if (req.user.role !== 'admin' && event.organizerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
@@ -984,7 +969,7 @@ app.get('/api/participant/dashboard', verifyToken, restrictTo('participant'), as
     }
 });
 
-// Organizer Dashboard (organizer and admin)
+// Organizer Dashboard
 app.get('/api/organizer/dashboard', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const events = await Event.find({ organizerId: req.user._id }).sort({ createdAt: -1 });
@@ -1028,7 +1013,7 @@ app.put('/api/users/interests', verifyToken, async (req, res) => {
     }
 });
 
-// ===== NEW ROUTE 3: Update full profile =====
+// Update full profile
 app.put('/api/users/profile', verifyToken, async (req, res) => {
     try {
         const { firstName, lastName, contactNumber, collegeName, interests } = req.body;
@@ -1053,24 +1038,20 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
     }
 });
 
-// ===== NEW ROUTE 4: Change password =====
+// Change password
 app.put('/api/users/password', verifyToken, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         
-        // Get user with password
         const user = await User.findById(req.user._id).select('+password');
         
-        // Verify current password
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ success: false, message: 'Current password is incorrect' });
         }
         
-        // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         
-        // Update password
         user.password = hashedPassword;
         await user.save();
         
@@ -1148,7 +1129,7 @@ app.post('/api/users/skip-onboarding', verifyToken, async (req, res) => {
     }
 });
 
-// ========== TASK 10: ORGANIZER ROUTES ==========
+// ========== ORGANIZER ROUTES ==========
 
 // Get organizer's events with analytics
 app.get('/api/organizer/events', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
@@ -1156,7 +1137,6 @@ app.get('/api/organizer/events', verifyToken, restrictTo('organizer', 'admin'), 
         const events = await Event.find({ organizerId: req.user._id })
             .sort({ createdAt: -1 });
         
-        // Get analytics for completed events
         const completedEvents = events.filter(e => e.status === 'completed');
         const analytics = {
             totalRegistrations: 0,
@@ -1203,7 +1183,6 @@ app.patch('/api/events/:id/status', verifyToken, restrictTo('organizer', 'admin'
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
         
-        // Validate status transitions
         const validTransitions = {
             'draft': ['published'],
             'published': ['ongoing', 'closed'],
@@ -1231,7 +1210,7 @@ app.patch('/api/events/:id/status', verifyToken, restrictTo('organizer', 'admin'
     }
 });
 
-// Get event participants with filters (UPDATED to include ticketId)
+// Get event participants with filters
 app.get('/api/events/:eventId/participants', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         const { search, status, payment } = req.query;
@@ -1360,9 +1339,9 @@ app.post('/api/organizer/discord-webhook', verifyToken, restrictTo('organizer'),
     }
 });
 
-// ========== TASK 11: ADMIN ROUTES ==========
+// ========== ADMIN ROUTES ==========
 
-// Get all clubs/organizers (for admin)
+// Get all clubs/organizers
 app.get('/api/admin/clubs', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const clubs = await User.find({ 
@@ -1390,7 +1369,7 @@ app.get('/api/admin/clubs/deleted', verifyToken, restrictTo('admin'), async (req
     }
 });
 
-// Create new club/organizer (admin only)
+// Create new club/organizer
 app.post('/api/admin/clubs', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const { organizerName, category, description, contactEmail } = req.body;
@@ -1515,7 +1494,7 @@ app.delete('/api/admin/clubs/:id', verifyToken, restrictTo('admin'), async (req,
 
 // ========== ORGANIZER PASSWORD RESET ROUTES ==========
 
-// 1. Request password reset (Organizer)
+// 1. Request password reset
 app.post('/api/organizer/password-reset/request', verifyToken, restrictTo('organizer'), async (req, res) => {
     try {
         const { reason } = req.body;
@@ -1527,7 +1506,6 @@ app.post('/api/organizer/password-reset/request', verifyToken, restrictTo('organ
             });
         }
 
-        // Check if there's already a pending request
         const existingRequest = await OrganizerPasswordReset.findOne({
             organizerId: req.user._id,
             status: 'pending'
@@ -1540,7 +1518,6 @@ app.post('/api/organizer/password-reset/request', verifyToken, restrictTo('organ
             });
         }
 
-        // Get club name from organizer details
         const clubName = req.user.organizerDetails?.organizerName || 
                         `${req.user.firstName} ${req.user.lastName}`;
 
@@ -1552,7 +1529,6 @@ app.post('/api/organizer/password-reset/request', verifyToken, restrictTo('organ
             requestedAt: new Date()
         });
 
-        // Populate organizer details for response
         await resetRequest.populate('organizerId', 'firstName lastName email organizerDetails');
 
         res.status(201).json({
@@ -1566,7 +1542,7 @@ app.post('/api/organizer/password-reset/request', verifyToken, restrictTo('organ
     }
 });
 
-// 2. Get all password reset requests (Admin)
+// 2. Get all password reset requests
 app.get('/api/admin/password-reset-requests', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const { status } = req.query;
@@ -1591,7 +1567,7 @@ app.get('/api/admin/password-reset-requests', verifyToken, restrictTo('admin'), 
     }
 });
 
-// 3. Get single password reset request (Admin)
+// 3. Get single password reset request
 app.get('/api/admin/password-reset-requests/:requestId', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const { requestId } = req.params;
@@ -1616,7 +1592,7 @@ app.get('/api/admin/password-reset-requests/:requestId', verifyToken, restrictTo
     }
 });
 
-// 4. Approve password reset request (Admin)
+// 4. Approve password reset request
 app.post('/api/admin/password-reset-requests/:requestId/approve', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const { requestId } = req.params;
@@ -1639,27 +1615,22 @@ app.post('/api/admin/password-reset-requests/:requestId/approve', verifyToken, r
             });
         }
 
-        // Generate new random password
         const newPassword = Math.random().toString(36).slice(-8) + 
                            Math.random().toString(36).slice(-8).toUpperCase() + 
                            '!@#' + Math.floor(Math.random() * 100);
 
-        // Hash the new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // Update organizer's password
         await User.findByIdAndUpdate(resetRequest.organizerId._id, {
             password: hashedPassword
         });
 
-        // Update reset request
         resetRequest.status = 'approved';
         resetRequest.adminComment = adminComment || 'Password reset approved by admin';
-        resetRequest.newPassword = newPassword; // Store plain password for admin to see (will be returned in response)
+        resetRequest.newPassword = newPassword;
         resetRequest.resolvedAt = new Date();
         await resetRequest.save();
 
-        // Return the new password in response (admin will share it with organizer)
         res.json({
             success: true,
             message: 'Password reset request approved',
@@ -1668,7 +1639,7 @@ app.post('/api/admin/password-reset-requests/:requestId/approve', verifyToken, r
                 clubName: resetRequest.clubName,
                 status: resetRequest.status,
                 adminComment: resetRequest.adminComment,
-                newPassword: newPassword, // Send plain password to admin
+                newPassword: newPassword,
                 resolvedAt: resetRequest.resolvedAt,
                 organizer: {
                     name: `${resetRequest.organizerId.firstName} ${resetRequest.organizerId.lastName}`,
@@ -1682,7 +1653,7 @@ app.post('/api/admin/password-reset-requests/:requestId/approve', verifyToken, r
     }
 });
 
-// 5. Reject password reset request (Admin)
+// 5. Reject password reset request
 app.post('/api/admin/password-reset-requests/:requestId/reject', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const { requestId } = req.params;
@@ -1712,7 +1683,6 @@ app.post('/api/admin/password-reset-requests/:requestId/reject', verifyToken, re
             });
         }
 
-        // Update reset request
         resetRequest.status = 'rejected';
         resetRequest.adminComment = adminComment;
         resetRequest.resolvedAt = new Date();
@@ -1735,16 +1705,14 @@ app.post('/api/admin/password-reset-requests/:requestId/reject', verifyToken, re
     }
 });
 
-// 6. Get password reset history for an organizer (Admin/Organizer)
+// 6. Get password reset history
 app.get('/api/organizer/password-reset-history', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
     try {
         let query = {};
         
         if (req.user.role === 'organizer') {
-            // Organizer can only see their own history
             query.organizerId = req.user._id;
         } else if (req.user.role === 'admin' && req.query.organizerId) {
-            // Admin can see specific organizer's history
             query.organizerId = req.query.organizerId;
         }
 
@@ -1763,7 +1731,7 @@ app.get('/api/organizer/password-reset-history', verifyToken, restrictTo('organi
     }
 });
 
-// 7. Get password reset statistics (Admin)
+// 7. Get password reset statistics
 app.get('/api/admin/password-reset-stats', verifyToken, restrictTo('admin'), async (req, res) => {
     try {
         const stats = await OrganizerPasswordReset.aggregate([
@@ -1777,7 +1745,6 @@ app.get('/api/admin/password-reset-stats', verifyToken, restrictTo('admin'), asy
 
         const totalRequests = await OrganizerPasswordReset.countDocuments();
         
-        // Get recent activity
         const recentActivity = await OrganizerPasswordReset.find()
             .populate('organizerId', 'firstName lastName email')
             .sort({ requestedAt: -1 })
@@ -1800,7 +1767,7 @@ app.get('/api/admin/password-reset-stats', verifyToken, restrictTo('admin'), asy
     }
 });
 
-// ========== TASK 13: CALENDAR INTEGRATION (Tier C) ==========
+// ========== CALENDAR INTEGRATION ROUTES ==========
 
 // Generate .ics file for event
 app.get('/api/events/:id/calendar', verifyToken, async (req, res) => {
@@ -1865,7 +1832,7 @@ app.get('/api/events/:id/google-calendar-link', verifyToken, async (req, res) =>
     }
 });
 
-// ========== TASK 13: QR SCANNER & ATTENDANCE TRACKING (Tier A) ==========
+// ========== QR SCANNER & ATTENDANCE TRACKING ROUTES ==========
 
 // Mark attendance by scanning QR code
 app.post('/api/events/:eventId/attendance/scan', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
@@ -2060,7 +2027,7 @@ app.get('/api/events/:eventId/attendance/export', verifyToken, restrictTo('organ
     }
 });
 
-// ========== TASK 13: MERCHANDISE PAYMENT APPROVAL (Tier A) ==========
+// ========== MERCHANDISE PAYMENT APPROVAL ROUTES ==========
 
 // Get pending merchandise orders for an event
 app.get('/api/events/:eventId/orders/pending', verifyToken, restrictTo('organizer', 'admin'), async (req, res) => {
@@ -2229,7 +2196,7 @@ app.post('/api/orders/:orderId/upload-proof', verifyToken, async (req, res) => {
     }
 });
 
-// ========== TASK 13: REAL-TIME DISCUSSION FORUM (Tier B) ==========
+// ========== REAL-TIME DISCUSSION FORUM ROUTES ==========
 
 // Get all forum messages for an event
 app.get('/api/forum/:eventId', verifyToken, async (req, res) => {
@@ -2442,7 +2409,7 @@ io.on('connection', (socket) => {
 
 // ========== DEBUG ROUTES ==========
 
-// Get all users (debug)
+// Get all users
 app.get('/api/test/interests', async (req, res) => {
     try {
         const users = await User.find().select('firstName email role organizerDetails');
@@ -2452,7 +2419,7 @@ app.get('/api/test/interests', async (req, res) => {
     }
 });
 
-// Get all events (debug)
+// Get all events
 app.get('/api/test/events', async (req, res) => {
     try {
         const events = await Event.find().populate('organizerId', 'organizerDetails');
@@ -2462,7 +2429,7 @@ app.get('/api/test/events', async (req, res) => {
     }
 });
 
-// Delete all users (debug)
+// Delete all users
 app.delete('/api/test/delete-all-users', async (req, res) => {
     try {
         const result = await User.deleteMany({});
@@ -2472,7 +2439,7 @@ app.delete('/api/test/delete-all-users', async (req, res) => {
     }
 });
 
-// Delete all events (debug)
+// Delete all events
 app.delete('/api/test/delete-all-events', async (req, res) => {
     try {
         const result = await Event.deleteMany({});
@@ -2483,7 +2450,7 @@ app.delete('/api/test/delete-all-events', async (req, res) => {
     }
 });
 
-// Make user organizer (debug)
+// Make user organizer
 app.patch('/api/debug/make-organizer', async (req, res) => {
     try {
         const { email } = req.body;
@@ -2510,7 +2477,8 @@ app.patch('/api/debug/make-organizer', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-// ===== DEBUG: Check stored password =====
+
+// Check stored password
 app.get('/api/debug/check-password/:email', async (req, res) => {
     try {
         const { email } = req.params;
@@ -2525,40 +2493,39 @@ app.get('/api/debug/check-password/:email', async (req, res) => {
             data: {
                 email: user.email,
                 role: user.role,
-                passwordHash: user.password, // This shows the hashed password
-                // Don't worry, this is just for debugging
+                passwordHash: user.password
             }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // ========== START SERVER ==========
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB and start server with Socket.io
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fest-management')
     .then(async () => {
-        console.log('✅ MongoDB Connected');
+        console.log('MongoDB Connected');
         
         await createAdminAndSampleData();
         
         server.listen(PORT, () => {
-            console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-            console.log(`📝 Test Credentials:`);
+            console.log(`\nServer running on http://localhost:${PORT}`);
+            console.log(`Test Credentials:`);
             console.log(`   Admin: admin@iiit.ac.in / Admin@123456`);
             console.log(`   Organizer: coding.club@iiit.ac.in / Club@123456`);
             console.log(`   Organizer: music.club@iiit.ac.in / Club@123456`);
-            console.log(`\n✅ Task 7 (Event Types) is ready!`);
-            console.log(`✅ Task 8 (Event Attributes) is ready!`);
-            console.log(`✅ Task 10 (Organizer Features) routes added!`);
-            console.log(`✅ Task 11 (Admin Features) routes added!`);
-            console.log(`✅ Task 13 (Calendar Integration) added!`);
-            console.log(`✅ Task 13 (QR Scanner & Attendance) added!`);
-            console.log(`✅ Task 13 (Merchandise Payment) added!`);
-            console.log(`✅ Task 13 (Real-Time Discussion Forum) added!`);
-            console.log(`✅ Organizer Password Reset Workflow (6 Marks) added!\n`);
-            console.log(`📋 Password Reset Routes:`);
+            console.log(`\nTask 7 (Event Types) is ready!`);
+            console.log(`Task 8 (Event Attributes) is ready!`);
+            console.log(`Task 10 (Organizer Features) routes added!`);
+            console.log(`Task 11 (Admin Features) routes added!`);
+            console.log(`Task 13 (Calendar Integration) added!`);
+            console.log(`Task 13 (QR Scanner & Attendance) added!`);
+            console.log(`Task 13 (Merchandise Payment) added!`);
+            console.log(`Task 13 (Real-Time Discussion Forum) added!`);
+            console.log(`Organizer Password Reset Workflow added!\n`);
+            console.log(`Password Reset Routes:`);
             console.log(`   POST   /api/organizer/password-reset/request - Organizer requests reset`);
             console.log(`   GET    /api/admin/password-reset-requests - Admin views all requests`);
             console.log(`   GET    /api/admin/password-reset-requests/:id - Admin views single request`);
@@ -2569,6 +2536,6 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fest-mana
         });
     })
     .catch(err => {
-        console.error('❌ MongoDB connection error:', err);
+        console.error('MongoDB connection error:', err);
         process.exit(1);
     });
