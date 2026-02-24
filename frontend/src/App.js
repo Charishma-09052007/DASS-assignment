@@ -30,6 +30,7 @@ import PasswordResetRequests from './pages/admin/PasswordResetRequests';
 
 // ===== FIXED: API setup with environment variable =====
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+console.log('API_BASE_URL during build:', API_BASE_URL); 
 
 const API = axios.create({
     baseURL: API_BASE_URL,
