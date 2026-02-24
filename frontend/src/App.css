@@ -1,0 +1,31 @@
+/* App.css - Plain CSS for Full App Mode */
+
+.app-container {
+    min-height: 100vh;
+    background-color: #f3f4f6;
+}
+
+/* Test Mode Button */
+.test-mode-btn-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.test-mode-btn {
+    padding: 10px 20px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.test-mode-btn:hover {
+    background-color: #5a6268;
+}
+
+/* Import other styles from your components */
+/* Note: Each component will have its own CSS file or inline styles */
