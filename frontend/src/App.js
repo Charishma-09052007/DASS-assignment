@@ -28,9 +28,11 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageClubs from './pages/admin/ManageClubs';
 import PasswordResetRequests from './pages/admin/PasswordResetRequests';
 
-// API setup
+// ===== FIXED: API setup with environment variable =====
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const API = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_BASE_URL,
     headers: { 'Content-Type': 'application/json' }
 });
 
@@ -43,7 +45,7 @@ API.interceptors.request.use((config) => {
 });
 
 // Export for use in other files
-export { API };
+export { API, API_BASE_URL };
 
 function App() {
     const [email, setEmail] = useState('');
@@ -66,7 +68,8 @@ function App() {
         setMessage('');
 
         try {
-            const response = await axios.post('http://localhost:5000/api/auth/login', {
+            // ===== FIXED: Use API_BASE_URL instead of hardcoded localhost =====
+            const response = await axios.post(`${API_BASE_URL}/auth/login`, {
                 email,
                 password
             });
