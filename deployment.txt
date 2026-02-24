@@ -1,0 +1,2 @@
+Frontend URL: https://dass-assignment-ttny.vercel.app
+Backend API URL: https://dass-assignment-ue07.onrender.com
