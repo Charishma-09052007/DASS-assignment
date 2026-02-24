@@ -28,9 +28,13 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageClubs from './pages/admin/ManageClubs';
 import PasswordResetRequests from './pages/admin/PasswordResetRequests';
 
-// ===== FIXED: API setup with environment variable =====
+// ===== UPDATED: API setup with better debug logging =====
+console.log('🔍 All env vars:', Object.keys(process.env).filter(key => key.startsWith('REACT_APP')));
+console.log('🔍 REACT_APP_API_URL from env:', process.env.REACT_APP_API_URL);
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-console.log('API_BASE_URL during build:', API_BASE_URL); 
+console.log('🔍 Final API_BASE_URL:', API_BASE_URL);
+console.log('🔍 Login endpoint will be:', `${API_BASE_URL}/auth/login`);
 
 const API = axios.create({
     baseURL: API_BASE_URL,
@@ -69,11 +73,14 @@ function App() {
         setMessage('');
 
         try {
-            // ===== FIXED: Use API_BASE_URL instead of hardcoded localhost =====
+            console.log('🔍 Attempting login to:', `${API_BASE_URL}/auth/login`);
+            
             const response = await axios.post(`${API_BASE_URL}/auth/login`, {
                 email,
                 password
             });
+
+            console.log('🔍 Login response:', response.data);
 
             if (response.data.success) {
                 localStorage.setItem('token', response.data.token);
@@ -89,7 +96,17 @@ function App() {
                 setMessage(response.data.message || 'Login failed');
             }
         } catch (error) {
-            setMessage('Error: ' + (error.response?.data?.message || error.message));
+            console.error('🔍 Login error:', error);
+            console.error('🔍 Error response:', error.response);
+            console.error('🔍 Error config:', error.config);
+            
+            if (error.code === 'ERR_NETWORK') {
+                setMessage('Network error: Cannot connect to backend. Check if backend is running and CORS is configured.');
+            } else if (error.response) {
+                setMessage(`Server error (${error.response.status}): ${error.response.data?.message || error.message}`);
+            } else {
+                setMessage('Error: ' + error.message);
+            }
         }
     };
 
